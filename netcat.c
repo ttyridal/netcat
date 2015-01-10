@@ -1848,7 +1848,7 @@ int main (argc, argv)
 #endif
 
 recycle:
-
+	optind = 1;
 #if 0
 	/* if no args given at all, get 'em from stdin and construct an argv. */
 	if (argc == 1) {
