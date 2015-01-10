@@ -1,0 +1,14 @@
+cc=gcc
+link=gcc
+
+CFLGAS=-g -O2 -c -DGAPING_SECURITY_HOLE
+LDFLAGS=-g -o nc
+
+all: nc
+
+netcat.o: netcat.c
+	$(cc) $(CFLGAS) netcat.c
+
+nc: netcat.o
+	$(link) netcat.o $(LDFLAGS)
+

