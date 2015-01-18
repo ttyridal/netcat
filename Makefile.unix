@@ -1,7 +1,7 @@
 cc=gcc
 link=gcc
 
-CFLGAS=-g -O2 -c -DGAPING_SECURITY_HOLE
+CFLGAS=-g -O2 -c -DGAPING_SECURITY_HOLE -DTELNET
 LDFLAGS=-g -o nc
 
 all: nc
