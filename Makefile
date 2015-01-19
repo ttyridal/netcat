@@ -7,8 +7,8 @@ STRIP=$(PREFIX)strip
 LD=$(CC)
 
 #link=link
-CFLAGS=-DNDEBUG -DWIN32 -D_CONSOLE -DTELNET -DGAPING_SECURITY_HOLE
-LDFLAGS=-lws2_32
+CFLAGS=-DWIN32 -DTELNET -DGAPING_SECURITY_HOLE
+LDFLAGS=-lws2_32 -lshlwapi
 
 all: nc.exe
 
@@ -25,3 +25,7 @@ all: nc.exe
 nc.exe: getopt.o doexec.o netcat.o
 	$(LD) $^ $(LDFLAGS) -o $@ 
 	$(STRIP) $@
+
+
+clean:
+	-rm *.o nc.exe
