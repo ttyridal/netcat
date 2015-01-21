@@ -12,3 +12,6 @@ netcat.o: netcat.c
 nc: netcat.o
 	$(link) netcat.o $(LDFLAGS)
 
+clean:
+	-rm *.o nc
+
