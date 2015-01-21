@@ -1505,6 +1505,8 @@ static int readwrite (fd)
 #endif
 				return (1);
 			}
+
+			continue;
 		} /* select fuckup */
 		/* if we have a timeout AND stdin is closed AND we haven't heard anything
 		from the net during that time, assume it's dead and close it too. */
@@ -1784,7 +1786,7 @@ void sigint_handler(int signo)
 	int answer;
 	printf("Do you want to quit?(Y/N)");
 	answer = getchar();
-	if (answer == 'Y')
+	if (answer == 'Y' || answer == 'y')
 		exit(0);
 }
 /* main :
