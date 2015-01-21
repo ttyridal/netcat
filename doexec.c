@@ -430,7 +430,7 @@ static VOID
 	//
 	// Loop, reading one byte at a time from the socket.    
 	//
-	while (recv(Session->ClientSocket, RecvBuffer, sizeof(RecvBuffer), 0) != 0) {
+	while (recv(Session->ClientSocket, RecvBuffer, sizeof(RecvBuffer), 0) > 0) {
 
 		Buffer[BufferCnt++] = RecvBuffer[0];
 		if (RecvBuffer[0] == '\r')
