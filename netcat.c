@@ -321,6 +321,7 @@ static char * winsockstr(error)
 }
 #endif
 
+#ifndef MODERN_FNS
 /* holler :
 fake varargs -- need to do this way because we wind up calling through
 more levels of indirection than vanilla varargs can handle, and not all
@@ -344,7 +345,15 @@ void holler (str, p1, p2, p3, p4, p5, p6)
 		fflush (stderr);
 	}
 } /* holler */
+#else
+#define holler(...) fprintf(stderr, __VA_ARGS__)
+#endif
 
+#ifdef MODERN_FNS
+#define bail(...) do { holler(__VA_ARGS__); __shutdownnow();} while(0)
+static void __shutdownnow(void)
+{
+#else
 /* bail :
 error-exit handler, callable from anywhere */
 static void bail (str, p1, p2, p3, p4, p5, p6)
@@ -353,6 +362,7 @@ static void bail (str, p1, p2, p3, p4, p5, p6)
 {
 	o_verbose = 1;
 	holler (str, p1, p2, p3, p4, p5, p6);
+#endif
 #ifdef WIN32
 	shutdown(netfd, 0x02);  /* Kirby */
 	closesocket (netfd);
