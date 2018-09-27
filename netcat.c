@@ -472,10 +472,10 @@ find the next newline in a buffer; return inclusive size of that "line",
 or the entire buffer size, so the caller knows how much to then write().
 Not distinguishing \n vs \r\n for the nonce; it just works as is... */
 static unsigned int findline (buf, siz)
-	char * buf;
+	unsigned char * buf;
 	unsigned int siz;
 {
-	register char * p;
+	register unsigned char * p;
 	register int x;
 	if (! buf)			/* various sanity checks... */
 		return (0);
@@ -1286,7 +1286,7 @@ what when.  Adapted from dgaudet's original example -- but must be ripping
 *fast*, since we don't want to be too disk-bound... */
 static void oprint (which, buf, n)
 	int which;
-	char * buf;
+	unsigned char * buf;
 	int n;
 {
 	int bc;			/* in buffer count */
@@ -1314,7 +1314,7 @@ static void oprint (which, buf, n)
 	}
 	op++;				/* preload "direction" */
 	*op = ' ';
-	p = (unsigned char *) buf;
+	p = buf;
 	bc = n;
 	stage[59] = '#';		/* preload separator */
 	stage[60] = ' ';
