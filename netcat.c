@@ -100,9 +100,11 @@ backend progs to grab a pty and look like a real telnetd?!
 # include <conio.h>
 # include "getopt.h"
 # define sleep(_x)		Sleep((_x)*1000)
+#ifndef EADDRINUSE
 # define EADDRINUSE		WSAEADDRINUSE
 # define ETIMEDOUT		WSAETIMEDOUT
 # define ECONNREFUSED	WSAECONNREFUSED
+#endif
 #else
 # include <sys/time.h>          /* timeval, time_t */
 # include <setjmp.h>            /* jmp_buf et al */
