@@ -228,30 +228,30 @@ call for Win32 */
 
 static void res_init()
 {
-	WORD wVersionRequested; 
-	WSADATA wsaData; 
-	int err; 
-	wVersionRequested = MAKEWORD(1, 1); 
+	WORD wVersionRequested;
+	WSADATA wsaData;
+	int err;
+	wVersionRequested = MAKEWORD(1, 1);
 
-	err = WSAStartup(wVersionRequested, &wsaData); 
+	err = WSAStartup(wVersionRequested, &wsaData);
 
-	if (err != 0) 
-		/* Tell the user that we couldn't find a useable */ 
-		/* winsock.dll.     */ 
-		return; 
+	if (err != 0)
+		/* Tell the user that we couldn't find a useable */
+		/* winsock.dll.     */
+		return;
 
-	/* Confirm that the Windows Sockets DLL supports 1.1.*/ 
-	/* Note that if the DLL supports versions greater */ 
-	/* than 1.1 in addition to 1.1, it will still return */ 
-	/* 1.1 in wVersion since that is the version we */ 
-	/* requested. */ 
+	/* Confirm that the Windows Sockets DLL supports 1.1.*/
+	/* Note that if the DLL supports versions greater */
+	/* than 1.1 in addition to 1.1, it will still return */
+	/* 1.1 in wVersion since that is the version we */
+	/* requested. */
 
-	if ( LOBYTE( wsaData.wVersion ) != 1 || 
-		HIBYTE( wsaData.wVersion ) != 1 ) { 
-			/* Tell the user that we couldn't find a useable */ 
-			/* winsock.dll. */ 
-			WSACleanup(); 
-			return; 
+	if ( LOBYTE( wsaData.wVersion ) != 1 ||
+		HIBYTE( wsaData.wVersion ) != 1 ) {
+			/* Tell the user that we couldn't find a useable */
+			/* winsock.dll. */
+			WSACleanup();
+			return;
 	}
 
 }
@@ -486,7 +486,7 @@ static int comparehosts (poop, hp)
 #endif
 	/* The DNS spec is officially case-insensitive, but for those times when you
 	*really* wanna see any and all discrepancies, by all means define this. */
-#ifdef ANAL			
+#ifdef ANAL
 	if (strcmp (poop->name, hp->h_name) != 0) {		/* case-sensitive */
 #else
 	if (strcasecmp (poop->name, hp->h_name) != 0) {	/* normal */
@@ -943,7 +943,7 @@ static int doconnect (rad, rp, lad, lp)
 	if (gatesidx) {		/* if we wanted any srcrt hops ... */
 		/* don't even bother compiling if we can't do IP options here! */
 		/* #ifdef IP_OPTIONS */
-#ifndef WIN32 
+#ifndef WIN32
 		if (! optbuf) {		/* and don't already *have* a srcrt set */
 			char * opp;		/* then do all this setup hair */
 			optbuf = Hmalloc (48);
@@ -1431,7 +1431,7 @@ static int readwrite (fd)
 #if 1
 	/* sets stdin and stdout to binary so no crlf translation if its a tty */
 	if (!_isatty( 1 ))
-		_setmode( 1, _O_BINARY ); 
+		_setmode( 1, _O_BINARY );
 
 	if ((istty = _isatty( 0 )) == FALSE)
 		_setmode( 0, _O_BINARY ); /* (weld) I think we want to do this */
@@ -1531,7 +1531,7 @@ static int readwrite (fd)
 				shutdown(fd, 0x02);  /* Kirby */
 				closesocket (fd);
 				FD_ZERO(ding1);
-				WSASetLastError(0); 
+				WSASetLastError(0);
 				return (0);			/* not an error! */
 			}
 		} /* select timeout */
@@ -1630,7 +1630,7 @@ static int readwrite (fd)
 
 				// do nothing
 				// close (0);
-				
+
 			} else {
 				rzleft = rr;
 				zp = (unsigned char*)bigbuf_in;
@@ -1866,7 +1866,7 @@ int main (argc, argv)
 	errno = 0;
 	gatesptr = 4;
 #ifndef WIN32
-	h_errno = 0;	
+	h_errno = 0;
 #endif
 	/* catch a signal or two for cleanup */
 #ifdef NTFIXTHIS
@@ -2220,7 +2220,7 @@ recycle:
 					doexec (netfd);
 #endif /* GAPING_SECURITY_HOLE */
 				if (! o_zero)
-#ifdef WIN32 
+#ifdef WIN32
 #ifdef GAPING_SECURITY_HOLE
 					if (!pr00gie)  // doexec does the read/write for win32
 #endif
@@ -2282,7 +2282,7 @@ recycle:
 		goto recycle;
 
 #ifdef WIN32
-	WSACleanup(); 
+	WSACleanup();
 #endif
 
 	if (Single)
