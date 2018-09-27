@@ -71,6 +71,18 @@ backend progs to grab a pty and look like a real telnetd?!
 #undef SO_REUSEPORT
 #include <windows.h>
 #define strcasecmp	stricmp
+#if _WIN32_WINNT >= 0x0600
+// thanks microsoft
+#if _MSC_VER > 1500
+#define gets(x) gets_s(x, INT_MAX)
+#endif
+#define stricmp _stricmp
+#define kbhit _kbhit
+#define close _close
+#define read _read
+#define write _write
+#define dup _dup
+#endif
 #endif
 
 
