@@ -1363,7 +1363,7 @@ static void oprint (which, buf, n)
 #ifndef WIN32
 		x = write (ofd, stage, soc);
 #else
-		x = WriteFile((HANDLE)ofd, stage, soc, &wb, NULL) ? (int)wb : -1;
+		x = WriteFile((HANDLE)(uintptr_t)ofd, stage, soc, &wb, NULL) ? (int)wb : -1;
 #endif
 		if (x < 0)
 			bail ("ofd write err");
@@ -1807,7 +1807,7 @@ static void __w32_shutdown(void)
 {
 	if(ofd && ofd != (int)INVALID_HANDLE_VALUE)
 	{
-		CloseHandle((HANDLE)ofd);
+		CloseHandle((HANDLE)(uintptr_t)ofd);
 	}
 	if (w32_stdout)
 	{
